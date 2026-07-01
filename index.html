@@ -109,20 +109,28 @@
         setInterval(holeWetter, 900000); holeWetter();
 
         // Funktion um eine einzelne RBL abzufragen
-        // Funktion, um die Abfragen nacheinander mit Pause zu machen (Schont die API)
-        async function holeAlleAbfahrten() {
-            const keys = ['rbl1', 'rbl2', 'rbl3', 'rbl4', 'rbl5', 'rbl6'];
-    
-            for (let i = 0; i < keys.length; i++) {
-                // Warte 1 Sekunde zwischen den einzelnen Stationsabfragen
-                await new Promise(resolve => setTimeout(resolve, 1000)); 
-                holeEinzelneAbfahrt(rbls[keys[i]], `zeit${i+1}`);
+        // Funktion um eine einzelne RBL über die offizielle Echtzeit-Schnittstelle abzufragen
+async function holeEinzelneAbfahrt(rblId, elementId) {
+    try {
+        // Wir nutzen den aktuellen Echtzeit-Endpoint der Wiener Linien via funktionierendem HTTPS-Proxy für Webapps
+        const antwort = await fetch(`https://corsproxy.io/?url=http://realtime.wienerlinien.at/ogd_realtime/monitor?rbl=${rblId}`);
+        const daten = await antwort.json();
+        
+        // Versuchen, den Countdown auszulesen
+        if (daten && daten.data && daten.data.monitors && daten.data.monitors[0]) {
+            const monitor = daten.data.monitors[0];
+            if (monitor.lines && monitor.lines[0] && monitor.lines[0].departures) {
+                const countdown = monitor.lines[0].departures.departure[0].departureTime.countdown;
+                document.getElementById(elementId).innerText = `${countdown} min`;
+                return;
+            }
+        }
+        document.getElementById(elementId).innerText = "Keine Fahrt";
+    } catch (e) {
+        console.error("Fehler bei RBL " + rblId, e);
+        document.getElementById(elementId).innerText = "Err";
     }
 }
-
-// Alle 25 Sekunden den kompletten Durchlauf starten
-setInterval(holeAlleAbfahrten, 25000);
-holeAlleAbfahrten();
     </script>
 </body>
 </html>
