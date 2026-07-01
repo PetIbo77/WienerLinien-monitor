@@ -109,30 +109,20 @@
         setInterval(holeWetter, 900000); holeWetter();
 
         // Funktion um eine einzelne RBL abzufragen
-        async function holeEinzelneAbfahrt(rblId, elementId) {
-            try {
-                const antwort = await fetch(`https://www.wienerlinien.at/ogdweb/monitor?rbl=${rblId}`);
-                const daten = await antwort.json();
-                const countdown = daten.data.monitors[0].lines[0].departures.departure[0].departureTime.countdown;
-                document.getElementById(elementId).innerText = `${countdown} min`;
-            } catch (e) {
-                document.getElementById(elementId).innerText = "Err";
-            }
-        }
+        // Funktion, um die Abfragen nacheinander mit Pause zu machen (Schont die API)
+        async function holeAlleAbfahrten() {
+            const keys = ['rbl1', 'rbl2', 'rbl3', 'rbl4', 'rbl5', 'rbl6'];
+    
+            for (let i = 0; i < keys.length; i++) {
+                // Warte 1 Sekunde zwischen den einzelnen Stationsabfragen
+                await new Promise(resolve => setTimeout(resolve, 1000)); 
+                holeEinzelneAbfahrt(rbls[keys[i]], `zeit${i+1}`);
+    }
+}
 
-        // Alle 6 Felder nacheinander abfragen
-        function holeAlleAbfahrten() {
-            holeEinzelneAbfahrt(rbls.rbl1, 'zeit1');
-            holeEinzelneAbfahrt(rbls.rbl2, 'zeit2');
-            holeEinzelneAbfahrt(rbls.rbl3, 'zeit3');
-            holeEinzelneAbfahrt(rbls.rbl4, 'zeit4');
-            holeEinzelneAbfahrt(rbls.rbl5, 'zeit5');
-            holeEinzelneAbfahrt(rbls.rbl6, 'zeit6');
-        }
-
-        // Alle 20 Sekunden aktualisieren
-        setInterval(holeAlleAbfahrten, 20000);
-        holeAlleAbfahrten();
+// Alle 25 Sekunden den kompletten Durchlauf starten
+setInterval(holeAlleAbfahrten, 25000);
+holeAlleAbfahrten();
     </script>
 </body>
 </html>
