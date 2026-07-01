@@ -118,20 +118,31 @@
             const antwort = await fetch(`https://corsproxy.io/?url=http://realtime.wienerlinien.at/ogd_realtime/monitor?rbl=${rblId}`);
             const daten = await antwort.json();
         
-            // Prüfen, ob Daten da sind und den Countdown herausholen
-            if (daten && daten.data && daten.data.monitors && daten.data.monitors[0]) {
-                const lines = daten.data.monitors[0].lines;
-                if (lines && lines[0] && lines[0].departures && lines[0].departures.departure) {
-                    const countdown = lines[0].departures.departure[0].departureTime.countdown;
-                    document.getElementById(elementId).innerText = `${countdown} min`;
-                    return; // Erfolg, Funktion beenden
+        // Wir gehen ganz tief in die Datenstruktur der Wiener Linien rein
+            if (daten && daten.data && daten.data.monitors) {
+                const monitor = daten.data.monitors[0];
+            
+                if (monitor && monitor.lines && monitor.lines[0]) {
+                    const linie = monitor.lines[0];
+                
+                // Falls es geplante Abfahrten gibt
+                    if (linie.departures && linie.departures.departure) {
+                        const countdown = linie.departures.departure[0].departureTime.countdown;
+                        document.getElementById(elementId).innerText = `${countdown} min`;
+                        return;
+                } 
+                // Falls keine Live-Daten da sind, aber Fahrplandaten
+                    else if (linie.background && linie.background.title) {
+                        document.getElementById(elementId).innerText = "Keine Fahrt";
+                        return;
+                }
             }
         }
-        document.getElementById(elementId).innerText = "Keine Fahrt";
+        document.getElementById(elementId).innerText = "Nicht aktiv";
     } catch (e) {
         console.error("Fehler bei RBL " + rblId, e);
         document.getElementById(elementId).innerText = "Err";
-        }
+    }
     }
 
     // 4. Hauptfunktion für alle 6 Abfahrten nacheinander
