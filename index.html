@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wiener Linien Monitor - 6 Felder</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="top-bar">
+        <div id="zeit-box">
+            <p id="uhr">00:00</p>
+            <p id="datum">Lade...</p>
+        </div>
+        <div class="linie-card meidlinghpt">
+            <p><b>Meidling Hauptstraße</b></p>
+            <width: 50px; height: 50px;>
+        </div>
+        <div class="linie-card meidling">
+            <p><b>Meidling</b></p>
+            <width: 80px; height: 50px;>
+        </div>
+        <div id="wetter-box">--°C</div>
+    </div>
+
+    <div class="monitor-grid">
+        
+        <div class="linie-card meidlinghpt">
+            <div>
+                <div class="linie-name">9A</div>
+                <div class="linie-richtung"><b>Meidling Hauptstraße</b></div>
+            </div>
+            <div class="abfahrt-zeit" id="zeit1">-- min</div>
+        </div>
+
+        <div class="linie-card bus-tram">
+            <div>
+                <div class="linie-name">9A</div>
+                <div class="linie-richtung"><b></b>Meidling</b></div>
+            </div>
+            <div class="abfahrt-zeit" id="zeit2">-- min</div>
+        </div>
+
+        <div class="linie-card meidlinghpt">
+            <div>
+                <div class="linie-name">63A</div>
+                <div class="linie-richtung"><b></b>Meidling Hauptstraße</b></div>
+            </div>
+            <div class="abfahrt-zeit" id="zeit3">-- min</div>
+        </div>
+
+        <div class="linie-card meidlinghpt">
+            <div>
+                <div class="linie-name">7A</div>
+                <div class="linie-richtung"><b></b>Meidling Hauptstraße</b></div>
+            </div>
+            <div class="abfahrt-zeit" id="zeit4">-- min</div>
+        </div>
+
+        <div class="linie-card bus-tram">
+            <div>
+                <div class="linie-name">7A</div>
+                <div class="linie-richtung"><b></b>Reumanplatz</b></div>
+            </div>
+            <div class="abfahrt-zeit" id="zeit5">-- min</div>
+        </div>
+
+        <div class="linie-card u4">
+            <div>
+                <div class="linie-name">U4</div>
+                <div class="linie-richtung"><b></b>Heiligenstadt</b></div>
+            </div>
+            <div class="abfahrt-zeit" id="zeit6">-- min</div>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // HIER DEINE 6 SELBST GESUCHTEN RBL-NUMMERN EINTRAGEN
+        // ==========================================
+        const rbls = {
+            rbl1: "3203",
+            rbl2: "3217",
+            rbl3: "1789",
+            rbl4: "1838",
+            rbl5: "1801",
+            rbl6: "4413"
+        };
+
+        // Uhrzeit & Datum
+        function updateUhr() {
+            const jetzt = new Date();
+            const optionen = { weekday: 'long', day: 'numeric', month: 'long' };
+            document.getElementById('uhr').innerText = `${String(jetzt.getHours()).padStart(2, '0')}:${String(jetzt.getMinutes()).padStart(2, '0')}`;
+            document.getElementById('datum').innerText = jetzt.toLocaleDateString('de-AT', optionen);
+        }
+        setInterval(updateUhr, 1000); updateUhr();
+
+        // Wetter
+        async function holeWetter() {
+            try {
+                const antw = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=48.208&longitude=16.372&current_weather=true`);
+                const daten = await antw.json();
+                document.getElementById('wetter-box').innerText = `${Math.round(daten.current_weather.temperature)}°C`;
+            } catch (f) { console.error(f); }
+        }
+        setInterval(holeWetter, 900000); holeWetter();
+
+        // Funktion um eine einzelne RBL abzufragen
+        async function holeEinzelneAbfahrt(rblId, elementId) {
+            try {
+                const antwort = await fetch(`https://www.wienerlinien.at/ogdweb/monitor?rbl=${rblId}`);
+                const daten = await antwort.json();
+                const countdown = daten.data.monitors[0].lines[0].departures.departure[0].departureTime.countdown;
+                document.getElementById(elementId).innerText = `${countdown} min`;
+            } catch (e) {
+                document.getElementById(elementId).innerText = "Err";
+            }
+        }
+
+        // Alle 6 Felder nacheinander abfragen
+        function holeAlleAbfahrten() {
+            holeEinzelneAbfahrt(rbls.rbl1, 'zeit1');
+            holeEinzelneAbfahrt(rbls.rbl2, 'zeit2');
+            holeEinzelneAbfahrt(rbls.rbl3, 'zeit3');
+            holeEinzelneAbfahrt(rbls.rbl4, 'zeit4');
+            holeEinzelneAbfahrt(rbls.rbl5, 'zeit5');
+            holeEinzelneAbfahrt(rbls.rbl6, 'zeit6');
+        }
+
+        // Alle 20 Sekunden aktualisieren
+        setInterval(holeAlleAbfahrten, 20000);
+        holeAlleAbfahrten();
+    </script>
+</body>
+</html>
