@@ -114,51 +114,50 @@
 
         // 3. Funktion für eine einzelne Haltestelle
         async function holeEinzelneAbfahrt(rblId, elementId) {
-        try {
-            const antwort = await fetch(`https://corsproxy.io/?url=http://realtime.wienerlinien.at/ogd_realtime/monitor?rbl=${rblId}`);
-            const daten = await antwort.json();
+            try {
+                const url = `http://realtime.wienerlinien.at/ogd_realtime/monitor?rbl=${rblId}&sender=mein_tablet_monitor`;
         
-        // Wir gehen ganz tief in die Datenstruktur der Wiener Linien rein
-            if (daten && daten.data && daten.data.monitors) {
-                const monitor = daten.data.monitors[0];
+                // Wir nutzen jetzt den kostenlosen AllOrigins-Proxy
+                const antwort = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
+                const daten = await antwort.json();
+        
+                if (daten && daten.data && daten.data.monitors && daten.data.monitors.length > 0) {
+                    const monitor = daten.data.monitors[0];
             
-                if (monitor && monitor.lines && monitor.lines[0]) {
-                    const linie = monitor.lines[0];
+                    if (monitor.lines && monitor.lines.length > 0) {
+                        const linie = monitor.lines[0];
                 
-                // Falls es geplante Abfahrten gibt
-                    if (linie.departures && linie.departures.departure) {
-                        const countdown = linie.departures.departure[0].departureTime.countdown;
-                        document.getElementById(elementId).innerText = `${countdown} min`;
-                        return;
-                } 
-                // Falls keine Live-Daten da sind, aber Fahrplandaten
-                    else if (linie.background && linie.background.title) {
-                        document.getElementById(elementId).innerText = "Keine Fahrt";
-                        return;
+                        if (linie.departures && linie.departures.departure && linie.departures.departure.length > 0) {
+                            const countdown = linie.departures.departure[0].departureTime.countdown;
+                            document.getElementById(elementId).innerText = `${countdown} min`;
+                            return;
+                        }
+                    }
                 }
+        
+                document.getElementById(elementId).innerText = "Keine Fahrt";
+        
+            } catch (e) {
+                console.error("Fehler bei RBL " + rblId, e);
+                document.getElementById(elementId).innerText = "Err";
             }
         }
-        document.getElementById(elementId).innerText = "Nicht aktiv";
-    } catch (e) {
-        console.error("Fehler bei RBL " + rblId, e);
-        document.getElementById(elementId).innerText = "Err";
-    }
-    }
+    
 
-    // 4. Hauptfunktion für alle 6 Abfahrten nacheinander
-    async function holeAlleAbfahrten() {
-        const keys = ['rbl1', 'rbl2', 'rbl3', 'rbl4', 'rbl5', 'rbl6'];
-        for (let i = 0; i < keys.length; i++) {
-            // 1 Sekunde Pause zwischen den Stationen, um die API zu schonen
-            await new Promise(resolve => setTimeout(resolve, 1000)); 
-            holeEinzelneAbfahrt(rbls[keys[i]], `zeit${i+1}`);
+        // 4. Hauptfunktion für alle 6 Abfahrten nacheinander
+        async function holeAlleAbfahrten() {
+            const keys = ['rbl1', 'rbl2', 'rbl3', 'rbl4', 'rbl5', 'rbl6'];
+            for (let i = 0; i < keys.length; i++) {
+                // 1 Sekunde Pause zwischen den Stationen, um die API zu schonen
+                await new Promise(resolve => setTimeout(resolve, 1000)); 
+                holeEinzelneAbfahrt(rbls[keys[i]], `zeit${i+1}`);
+            }
         }
-    }
 
-    // Alle 25 Sekunden neu laden
-    setInterval(holeAlleAbfahrten, 25000);
-    // WICHTIG: Sofort beim Laden der Seite einmal ausführen!
-    holeAlleAbfahrten();
+        // Alle 25 Sekunden neu laden
+        setInterval(holeAlleAbfahrten, 25000);
+        // WICHTIG: Sofort beim Laden der Seite einmal ausführen!
+        holeAlleAbfahrten();
     </script>
 </body>
 </html>
