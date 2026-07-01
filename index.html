@@ -37,7 +37,7 @@
         <div class="linie-card bus-tram">
             <div>
                 <div class="linie-name">9A</div>
-                <div class="linie-richtung"><b></b>Meidling</b></div>
+                <div class="linie-richtung"><b>Meidling</b></div>
             </div>
             <div class="abfahrt-zeit" id="zeit2">-- min</div>
         </div>
@@ -45,7 +45,7 @@
         <div class="linie-card meidlinghpt">
             <div>
                 <div class="linie-name">63A</div>
-                <div class="linie-richtung"><b></b>Meidling Hauptstraße</b></div>
+                <div class="linie-richtung"><b>Meidling Hauptstraße</b></div>
             </div>
             <div class="abfahrt-zeit" id="zeit3">-- min</div>
         </div>
@@ -53,7 +53,7 @@
         <div class="linie-card meidlinghpt">
             <div>
                 <div class="linie-name">7A</div>
-                <div class="linie-richtung"><b></b>Meidling Hauptstraße</b></div>
+                <div class="linie-richtung"><b>Meidling Hauptstraße</b></div>
             </div>
             <div class="abfahrt-zeit" id="zeit4">-- min</div>
         </div>
@@ -61,7 +61,7 @@
         <div class="linie-card bus-tram">
             <div>
                 <div class="linie-name">7A</div>
-                <div class="linie-richtung"><b></b>Reumanplatz</b></div>
+                <div class="linie-richtung"><b>Reumanplatz</b></div>
             </div>
             <div class="abfahrt-zeit" id="zeit5">-- min</div>
         </div>
@@ -69,7 +69,7 @@
         <div class="linie-card u4">
             <div>
                 <div class="linie-name">U4</div>
-                <div class="linie-richtung"><b></b>Heiligenstadt</b></div>
+                <div class="linie-richtung"><b>Heiligenstadt</b></div>
             </div>
             <div class="abfahrt-zeit" id="zeit6">-- min</div>
         </div>
@@ -89,48 +89,65 @@
             rbl6: "4413"
         };
 
-        // Uhrzeit & Datum
+        // 1. Uhrzeit & Datum Funktion
         function updateUhr() {
             const jetzt = new Date();
             const optionen = { weekday: 'long', day: 'numeric', month: 'long' };
             document.getElementById('uhr').innerText = `${String(jetzt.getHours()).padStart(2, '0')}:${String(jetzt.getMinutes()).padStart(2, '0')}`;
             document.getElementById('datum').innerText = jetzt.toLocaleDateString('de-AT', optionen);
         }
-        setInterval(updateUhr, 1000); updateUhr();
+        setInterval(updateUhr, 1000); 
+        updateUhr(); // Sofort einmal starten
 
-        // Wetter
+        // 2. Wetter Funktion
         async function holeWetter() {
-            try {
-                const antw = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=48.208&longitude=16.372&current_weather=true`);
-                const daten = await antw.json();
-                document.getElementById('wetter-box').innerText = `${Math.round(daten.current_weather.temperature)}°C`;
-            } catch (f) { console.error(f); }
+        try {
+            const antw = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=48.208&longitude=16.372&current_weather=true`);
+            const daten = await antw.json();
+            document.getElementById('wetter-box').innerText = `${Math.round(daten.current_weather.temperature)}°C`;
+        } catch (f) { 
+            console.error("Wetter Fehler:", f); 
         }
-        setInterval(holeWetter, 900000); holeWetter();
+        }
+        setInterval(holeWetter, 900000); 
+        holeWetter(); // Sofort einmal starten
 
-        // Funktion um eine einzelne RBL abzufragen
-        // Funktion um eine einzelne RBL über die offizielle Echtzeit-Schnittstelle abzufragen
-async function holeEinzelneAbfahrt(rblId, elementId) {
-    try {
-        // Wir nutzen den aktuellen Echtzeit-Endpoint der Wiener Linien via funktionierendem HTTPS-Proxy für Webapps
-        const antwort = await fetch(`https://corsproxy.io/?url=http://realtime.wienerlinien.at/ogd_realtime/monitor?rbl=${rblId}`);
-        const daten = await antwort.json();
+        // 3. Funktion für eine einzelne Haltestelle
+        async function holeEinzelneAbfahrt(rblId, elementId) {
+        try {
+            const antwort = await fetch(`https://corsproxy.io/?url=http://realtime.wienerlinien.at/ogd_realtime/monitor?rbl=${rblId}`);
+            const daten = await antwort.json();
         
-        // Versuchen, den Countdown auszulesen
-        if (daten && daten.data && daten.data.monitors && daten.data.monitors[0]) {
-            const monitor = daten.data.monitors[0];
-            if (monitor.lines && monitor.lines[0] && monitor.lines[0].departures) {
-                const countdown = monitor.lines[0].departures.departure[0].departureTime.countdown;
-                document.getElementById(elementId).innerText = `${countdown} min`;
-                return;
+            // Prüfen, ob Daten da sind und den Countdown herausholen
+            if (daten && daten.data && daten.data.monitors && daten.data.monitors[0]) {
+                const lines = daten.data.monitors[0].lines;
+                if (lines && lines[0] && lines[0].departures && lines[0].departures.departure) {
+                    const countdown = lines[0].departures.departure[0].departureTime.countdown;
+                    document.getElementById(elementId).innerText = `${countdown} min`;
+                    return; // Erfolg, Funktion beenden
             }
         }
         document.getElementById(elementId).innerText = "Keine Fahrt";
     } catch (e) {
         console.error("Fehler bei RBL " + rblId, e);
         document.getElementById(elementId).innerText = "Err";
+        }
     }
-}
+
+    // 4. Hauptfunktion für alle 6 Abfahrten nacheinander
+    async function holeAlleAbfahrten() {
+        const keys = ['rbl1', 'rbl2', 'rbl3', 'rbl4', 'rbl5', 'rbl6'];
+        for (let i = 0; i < keys.length; i++) {
+            // 1 Sekunde Pause zwischen den Stationen, um die API zu schonen
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
+            holeEinzelneAbfahrt(rbls[keys[i]], `zeit${i+1}`);
+        }
+    }
+
+    // Alle 25 Sekunden neu laden
+    setInterval(holeAlleAbfahrten, 25000);
+    // WICHTIG: Sofort beim Laden der Seite einmal ausführen!
+    holeAlleAbfahrten();
     </script>
 </body>
 </html>
